@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Пульс дня — локальный планировщик задач вокруг встреч.">
+<title>Пульс дня — личный планировщик</title>
+<link rel="stylesheet" href="styles.css">
+<script src="vendor/ical.min.js" defer></script>
+<script src="app.js" defer></script>
+<script src="calendar-tools.js" defer></script>
+</head>
+<body>
+<header class="top">
+<div class="brand"><span class="mark" aria-hidden="true"><i class="icon" data-icon="pulse"></i></span><strong>Пульс дня</strong></div>
+<div class="top-actions">
+  <button id="load-demo" class="quiet">Заполнить примером</button>
+  <button id="open-import" class="outline"><i class="icon" data-icon="calendar" aria-hidden="true"></i>Календарь<span class="visually-hidden"> и встречи</span></button>
+  <button id="open-export" class="quiet"><i class="icon" data-icon="export" aria-hidden="true"></i>Выгрузить<span class="visually-hidden"> план</span></button>
+  <div class="date-nav"><button class="quiet" id="previous-day" aria-label="Предыдущий день"><i class="icon" data-icon="left" aria-hidden="true"></i></button><input type="date" id="work-date" aria-label="Дата плана" required><button class="quiet" id="next-day" aria-label="Следующий день"><i class="icon" data-icon="right" aria-hidden="true"></i></button></div>
+</div>
+</header>
+<main class="shell">
+<section class="hero" aria-labelledby="page-title">
+  <div class="hero-art" aria-hidden="true"></div>
+  <div class="hero-copy">
+    <h1 id="page-title">План дня</h1>
+    <p class="day" id="today"></p>
+    <div class="day-status"><i class="icon" data-icon="check-circle" aria-hidden="true"></i><strong id="planned-count">—</strong><span id="planned-meta">задач в плане</span></div>
+  </div>
+</section>
+<div class="workspace">
+<section class="plan card" aria-labelledby="plan-title">
+  <div class="card-heading"><div><h2 id="plan-title">Расписание</h2><p id="plan-caption"></p></div><button class="primary" id="build"><i class="icon" data-icon="turn" aria-hidden="true"></i>Собрать план</button></div>
+  <div class="time-status" aria-label="Сводка дня"><span>Время на задачи <strong id="free-time">—</strong></span><span>Свободно <strong id="remaining-time">—</strong></span><span>Вне плана <strong id="over-count">—</strong></span></div>
+  <div id="timeline"></div>
+</section>
+<div class="settings">
+  <section class="card proposal" id="plan-proposal" aria-labelledby="proposal-title" hidden>
+    <div class="proposal-heading"><span class="proposal-mark"><i class="icon" data-icon="fast-forward" aria-hidden="true"></i></span><div><h2 id="proposal-title">После встречи</h2><p id="proposal-caption"></p></div></div>
+    <ul id="proposal-changes"></ul>
+    <div class="proposal-actions"><button id="accept-plan" class="primary">Принять план</button><button id="cancel-plan" class="outline">Оставить без изменений</button></div>
+  </section>
+  <section id="overflow" hidden></section>
+  <section class="card" aria-labelledby="tasks-title">
+  <div class="card-heading"><h2 id="tasks-title">Задачи проекта</h2><button class="outline" id="add-task"><i class="icon" data-icon="plus" aria-hidden="true"></i>Добавить задачу</button></div>
+  <div class="task-tools"><label>Проект<select id="project-filter"><option value="">Все проекты</option></select></label><button class="outline" id="add-lesson">Этапы урока</button></div>
+  <div id="task-list" class="stack"></div>
+  </section>
+  <section class="card" aria-labelledby="fixed-title">
+  <div class="card-heading"><h2 id="fixed-title">Встречи и перерывы</h2><button class="outline" id="add-fixed"><i class="icon" data-icon="plus" aria-hidden="true"></i>Добавить</button></div>
+  <div id="fixed-list" class="stack"></div>
+  </section>
+  <section class="card hours" aria-labelledby="hours-title">
+  <div class="card-heading"><h2 id="hours-title">Границы дня</h2></div>
+  <form id="hours-form"><label>Начало<input id="day-start" type="time" required></label><label>Конец<input id="day-end" type="time" required></label><button class="outline" type="submit">Применить</button></form>
+  </section>
+</div>
+</div>
+<footer>
+<span id="storage">План сохраняется в этом браузере.</span>
+<div><button type="button" class="quiet" id="backup">Скачать копию планов</button><button type="button" class="quiet" id="restore">Восстановить из копии</button><input type="file" id="backup-file" accept=".json,application/json" hidden></div>
+</footer>
+</main>
+<dialog id="editor">
+<form id="entry-form">
+<div class="dialog-head"><h2 id="dialog-title"></h2><button type="button" class="quiet" id="close-dialog" aria-label="Закрыть">×</button></div>
+<label>Название<input id="entry-name" maxlength="80" required></label>
+<div class="form-grid" id="task-fields"><label>Длительность, мин<input id="duration" type="number" min="5" max="720" step="1" required></label><label>Приоритет<select id="priority"><option value="0">Срочно</option><option value="1">Важно</option><option value="2">Обычный</option></select></label><label>Проект<input id="project-name" maxlength="50" list="project-options"><datalist id="project-options"></datalist></label><label>После задачи<select id="dependency"></select></label></div>
+<div class="form-grid" id="fixed-fields"><label>Начало<input id="entry-start" type="time" required></label><label>Конец<input id="entry-end" type="time" required></label></div>
+<p class="error" id="entry-error" role="alert"></p>
+<div class="dialog-actions"><button type="button" class="outline" id="delete-entry" hidden>Удалить</button><button type="submit" class="primary">Сохранить</button></div>
+</form>
+</dialog>
+<dialog id="lesson-editor">
+<form id="lesson-form">
+<div class="dialog-head"><h2>Этапы нового урока</h2><button class="quiet" id="close-lesson" type="button" aria-label="Закрыть">×</button></div>
+<label>Проект или название урока<input id="lesson-project" maxlength="50" required></label>
+<p>Добавим связанные задачи: подготовить презентацию, написать скрипт, записать урок и собрать конспект. Длительность каждого этапа можно уточнить.</p>
+<p id="lesson-error" class="error" role="alert"></p>
+<div class="dialog-actions"><button class="primary" type="submit">Добавить этапы</button></div>
+</form>
+</dialog>
+<div id="notice" role="status" aria-live="polite"></div>
+<dialog id="calendar-editor" aria-labelledby="calendar-heading">
+<div class="dialog-head"><h2 id="calendar-heading">Календарь и встречи</h2><button class="quiet close-tools" type="button" aria-label="Закрыть">×</button></div>
+<div class="tab-row"><button id="file-tab" class="selected-tab" aria-pressed="true">Файл или список</button><button id="google-tab" aria-pressed="false">Google Календарь</button></div>
+<label class="range-label">Период с выбранной даты <select id="import-range"><option value="1">Выбранный день</option><option value="7" selected>7 дней</option><option value="30">30 дней</option></select></label>
+<div id="file-panel" class="tools-stack">
+  <label>Файл .ics, .csv или .tsv<input type="file" id="meeting-file" accept=".ics,.csv,.tsv,text/calendar,text/csv,text/tab-separated-values"></label>
+  <label>Или вставьте список встреч<textarea id="meeting-paste" rows="4" placeholder="10:30–11:15 Встреча с редактором&#10;14:00–14:30 Планирование"></textarea></label>
+  <div class="action-row"><button class="outline" id="csv-template">Шаблон CSV ↓</button><button class="primary" id="preview-import">Посмотреть встречи</button></div>
+</div>
+<div id="google-panel" class="tools-stack" hidden>
+  <p>Загрузите занятые интервалы из основного Google Календаря. Доступ только на чтение.</p>
+  <label>Google OAuth Client ID<input id="google-client-id" placeholder="…apps.googleusercontent.com" autocomplete="off" spellcheck="false"></label>
+  <details class="help"><summary>Первая настройка</summary><p>Откройте приложение по HTTPS или на localhost. В Google Cloud включите Calendar API и создайте OAuth-клиент типа «Веб-приложение». В разрешённые источники добавьте адрес сайта, указанный ниже. В режиме тестирования добавьте свой аккаунт в тестовые пользователи.</p><p>Адрес приложения: <code id="google-origin"></code></p><p><a href="https://developers.google.com/identity/oauth2/web/guides/get-google-api-clientid" target="_blank" rel="noopener noreferrer">Инструкция Google ↗</a></p></details>
+  <div class="action-row"><button class="outline" id="google-disconnect" hidden>Отключить</button><button class="primary" id="google-load">Подключить и загрузить</button></div>
+</div>
+<p id="import-status" class="import-status" role="status" aria-live="polite"></p>
+<div id="import-review" hidden><ul id="import-preview"></ul><div class="action-row"><button class="primary" id="apply-import">Добавить в план</button></div></div>
+</dialog>
+<dialog id="export-editor" aria-labelledby="export-heading">
+<div class="dialog-head"><h2 id="export-heading">Выгрузить план</h2><button class="quiet close-tools" type="button" aria-label="Закрыть">×</button></div>
+<div class="export-options">
+  <button class="format" id="print-plan"><b>PDF или печать</b><span>Расписание дня и задачи вне плана</span></button>
+  <button class="format" id="export-csv"><b>Таблица CSV</b><span>Откроется в Excel и Google Таблицах</span></button>
+  <button class="format" id="calendar"><b>В календарь · ICS</b><span>Добавьте запланированные дела в свой календарь</span></button>
+</div>
+<p class="format-note">При выгрузке ICS встречи из подключённого календаря пропускаются, чтобы не создавать дубликаты.</p>
+</dialog>
+<article id="print-sheet" aria-hidden="true"></article>
+</body>
+</html>
